@@ -9,14 +9,15 @@
 //Usar usleep
 //hacer dos variables condicion y un mutex
 
-pthread_cond_t prod;
-pthread_cond_t cons;
+pthread_cond_t prod = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cons = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lock;
 int total;
 int tam_cola;
 int cola;
 float tiempo_pro;
 float tiempo_con;
+int contador = 0;
 
 void *productor(void *estructura);
 void *consumidor(void *estructura);
@@ -28,32 +29,39 @@ typedef struct mi_estructuraTDA{
 void *productor(void *arg){
 	estructura *datos = (estructura *) arg;
 	int id = datos->id;
-	pthread_mutex_lock(&lock);
-	while(cola>=tam_cola){
-		pthread_cond_wait(&prod,&lock);
+	while(1){
+		pthread_mutex_lock(&lock);
+		while(cola>=tam_cola){
+			pthread_cond_wait(&prod,&lock);
+		}
+		usleep(tiempo_pro*1000000);
+		cola++;
+		printf("Productor %i ha producido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
+		contador++;
+		pthread_mutex_unlock(&lock);
+		pthread_cond_broadcast(&cons);
+		if(contador==total)
+			break;
 	}
-	usleep(tiempo_pro*1000000);
-	cola++;
-	printf("Productor %i ha producido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
-	pthread_mutex_unlock(&lock);
-	pthread_cond_broadcast(&cons);
-	
 	return (void *)0;
 }
 
 void *consumidor(void *arg){
 	estructura *datos = (estructura *) arg;
 	int id = datos->id;
-	pthread_mutex_lock(&lock);
-	while((cola<=0)){
-		pthread_cond_wait(&cons,&lock);
+	while(1){
+		pthread_mutex_lock(&lock);
+		while((cola<=0)){
+			pthread_cond_wait(&cons,&lock);
+		}
+		usleep(tiempo_con*1000000);
+		cola--;
+		printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
+		pthread_mutex_unlock(&lock);
+		pthread_cond_broadcast(&prod);
+		if(contador==total)
+			break;
 	}
-	usleep(tiempo_cons*1000000);
-	cola--;
-	printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
-	pthread_mutex_unlock(&lock);
-	pthread_cond_broadcast(&prod);
-	
 	return (void *)0;
 }
 
@@ -70,13 +78,11 @@ int main(int argc, char *argv[]){
     }
 
 	int num_hilos_p = atoi(argv[1]);
-	tiempo_pro = atoi(argv[2]);
-	tiempo_con = atoi(argv[4]);
+	tiempo_pro = atof(argv[2]);
+	tiempo_con = atof(argv[4]);
 	int num_hilos_c = atoi(argv[3]);
 	tam_cola = atoi(argv[5]);
 	total = atoi(argv[6]);
-	prod = PTHREAD_COND_INITIALIZER;
-	cons = PTHREAD_COND_INITIALIZER;
 
 	cola = 0;
 
@@ -89,13 +95,13 @@ int main(int argc, char *argv[]){
 	for(i=0;i<num_hilos_p;i++){
 		estructura *estruc = (estructura *)malloc(sizeof(estructura *));
 		estruc->id = i+1;
-		int hilo = pthread_create(&(productor+i), NULL, productores,(void *)estruc);
+		pthread_create(&productores[i], NULL, productor,(void *)estruc);
 	}
 	
 	for(i=0;i<num_hilos_p;i++){
 		estructura *estruc = (estructura *)malloc(sizeof(estructura *));
 		estruc->id = i+1;
-		int hilo = pthread_create(&(consumidor+i), NULL, consumidores,(void *)estruc);
+		pthread_create(&consumidores[i], NULL, consumidor,(void *)estruc);
 	}
 
 	return 0;
