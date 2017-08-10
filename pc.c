@@ -4,12 +4,8 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define MAX 1000000
 
 pthread_mutex_t lock;
-int *num_palabras;
-char **palabras;
-int tPalabras;
 
 void *funcion_hilo(void *estruc);
 
@@ -34,7 +30,8 @@ int main(int argc, char *argv[]){
 		printf("Cantidad de argumentos incorrecta");
 		return -1;
 	}
-	else{	
+	else{
+		int cont=0;	
 		if (pthread_mutex_init(&lock, NULL) != 0){
 		    	printf("\n mutex init failed\n");
 		    	return 1;
