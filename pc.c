@@ -45,11 +45,11 @@ void *productor(void *arg){
 		}
 		cola++;
 		contadorpro++;
-		printf("Productor %i ha producido 1 item, tamaño de cola = %i, items insertados: %i\n",id,(cola),contadorpro);
+		printf("Productor %i ha producido 1 item, tamaño de cola = %i\n",id,cola);
 		pthread_mutex_unlock(&lock);
 		pthread_cond_broadcast(&cons);
 	}
-	printf("Productor %i ha terminado.\n",id);
+	//printf("Productor %i ha terminado.\n",id);
 	return (void *)0;
 }
 
@@ -62,19 +62,20 @@ void *consumidor(void *arg){
 			pthread_cond_wait(&cons,&lock);
 		}
 		usleep(tiempo_con*1000000);
+		cola--;
+		contadorcon++;
+		printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i\n",id,cola);
 		pthread_mutex_unlock(&lock);
 		pthread_mutex_lock(&lock);
 		if(contadorcon>=total){
 			pthread_mutex_unlock(&lock);
+			pthread_cond_broadcast(&cons);
 			break;
 		}
-		cola--;
-		contadorcon++;
-		printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i,items consumidos: %i\n",id,(cola),contadorcon);
 		pthread_mutex_unlock(&lock);
 		pthread_cond_broadcast(&prod);
 	}
-	printf("Consumidor %i ha terminado.\n",id);
+	//printf("Consumidor %i ha terminado.\n",id);
 	return (void *)0;
 }
 
@@ -124,19 +125,10 @@ int main(int argc, char *argv[]){
 		pthread_create(&consumidores[i], NULL, consumidor,(void *)estruc);
 	}
 
-	for(i=0;i<num_hilos_p;i++){
-		pthread_join(productores[i],NULL);
-	}
-	for(i=0;i<num_hilos_c;i++){
-		pthread_join(consumidores[i],NULL);
+	while(1){
+		if(contadorcon>=total) break;
 	}
 
-/*	while(1){
-		pthread_mutex_lock(&lock);
-		if(contadorpro>=total && contadorcon>=total) break;
-		pthread_mutex_unlock(&lock);
-	}
-*/
 	printf("\n Programa terminado \n");
 	return 0;
 }
