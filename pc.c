@@ -17,7 +17,8 @@ int tam_cola;
 int cola;
 float tiempo_pro;
 float tiempo_con;
-int contador = 0;
+int contadorpro = 0;
+int contadorcon = 0;
 
 void *productor(void *estructura);
 void *consumidor(void *estructura);
@@ -35,14 +36,20 @@ void *productor(void *arg){
 			pthread_cond_wait(&prod,&lock);
 		}
 		usleep(tiempo_pro*1000000);
+		pthread_mutex_unlock(&lock);
+		pthread_mutex_lock(&lock);
+		if(contadorpro>=total){
+			pthread_mutex_unlock(&lock);
+			pthread_cond_broadcast(&prod);
+			break;
+		}
 		cola++;
-		printf("Productor %i ha producido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
-		contador++;
+		contadorpro++;
+		printf("Productor %i ha producido 1 item, tamaño de cola = %i, items insertados: %i\n",id,(cola),contadorpro);
 		pthread_mutex_unlock(&lock);
 		pthread_cond_broadcast(&cons);
-		if(contador==total)
-			break;
 	}
+	printf("Productor %i ha terminado.\n",id);
 	return (void *)0;
 }
 
@@ -55,13 +62,19 @@ void *consumidor(void *arg){
 			pthread_cond_wait(&cons,&lock);
 		}
 		usleep(tiempo_con*1000000);
+		pthread_mutex_unlock(&lock);
+		pthread_mutex_lock(&lock);
+		if(contadorcon>=total){
+			pthread_mutex_unlock(&lock);
+			break;
+		}
 		cola--;
-		printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i",id,(tam_cola-cola));
+		contadorcon++;
+		printf("Consumidor %i ha consumido 1 item, tamaño de cola = %i,items consumidos: %i\n",id,(cola),contadorcon);
 		pthread_mutex_unlock(&lock);
 		pthread_cond_broadcast(&prod);
-		if(contador==total)
-			break;
 	}
+	printf("Consumidor %i ha terminado.\n",id);
 	return (void *)0;
 }
 
@@ -84,6 +97,13 @@ int main(int argc, char *argv[]){
 	tam_cola = atoi(argv[5]);
 	total = atoi(argv[6]);
 
+	printf("Número de productores: %i\n", num_hilos_p);
+	printf("Número de consumidores: %i\n", num_hilos_c);
+	printf("Tamaño de cola: %i\n", tam_cola);
+	printf("Tiempo de consumo: %f\n", tiempo_con);
+	printf("Tiempo de producción: %f\n", tiempo_pro);
+	printf("Total de ítems a producir: %i\n\n", total);
+
 	cola = 0;
 
 	pthread_t *productores;
@@ -98,11 +118,25 @@ int main(int argc, char *argv[]){
 		pthread_create(&productores[i], NULL, productor,(void *)estruc);
 	}
 	
-	for(i=0;i<num_hilos_p;i++){
+	for(i=0;i<num_hilos_c;i++){
 		estructura *estruc = (estructura *)malloc(sizeof(estructura *));
 		estruc->id = i+1;
 		pthread_create(&consumidores[i], NULL, consumidor,(void *)estruc);
 	}
 
+	for(i=0;i<num_hilos_p;i++){
+		pthread_join(productores[i],NULL);
+	}
+	for(i=0;i<num_hilos_c;i++){
+		pthread_join(consumidores[i],NULL);
+	}
+
+/*	while(1){
+		pthread_mutex_lock(&lock);
+		if(contadorpro>=total && contadorcon>=total) break;
+		pthread_mutex_unlock(&lock);
+	}
+*/
+	printf("\n Programa terminado \n");
 	return 0;
 }
